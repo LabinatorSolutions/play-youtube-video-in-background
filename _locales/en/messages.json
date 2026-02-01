@@ -1,0 +1,10 @@
+{
+	"extensionName": {
+		"message": "Play YouTube Video In Background",
+		"description": "Name of the extension."
+	},
+	"extensionDescription": {
+		"message": "Prevents YouTube & Vimeo from stopping Firefox from playing videos in the background.",
+		"description": "Description of the extension."
+	}
+}

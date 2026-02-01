@@ -1,0 +1,44 @@
+{
+  "manifest_version": 3,
+  "name": "__MSG_extensionName__",
+  "default_locale": "en",
+  "version": "1.0.0",
+  "description": "__MSG_extensionDescription__",
+  "author": "Labinator",
+  "developer": {
+    "name": "Labinator",
+    "url": "https://labinator.com/"
+  },
+  "homepage_url": "https://github.com/LabinatorSolutions/play-youtube-video-in-background",
+  "icons": {
+    "16": "icon.svg",
+    "32": "icon.svg",
+    "48": "icon.svg",
+    "96": "icon.svg",
+    "128": "icon.svg"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "play-youtube-video-in-background@labinator.com",
+      "strict_min_version": "147.0"
+    }
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none';"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.youtube.com/*",
+        "*://*.youtube-nocookie.com/*",
+        "*://*.vimeo.com/*"
+      ],
+      "js": [
+        "play-youtube-video-in-background.js"
+      ],
+      "all_frames": true,
+      "run_at": "document_start"
+    }
+  ],
+  "permissions": []
+}

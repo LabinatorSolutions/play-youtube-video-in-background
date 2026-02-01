@@ -1,0 +1,22 @@
+# OS metadata
+.DS_Store
+Thumbs.db
+.idea
+.vscode
+*.swp
+*.swo
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Build artifacts (if any in future)
+dist/
+build/
+*.zip
+web-ext-artifacts/
+
+# Local config (if any)
+local-config.json
+.env
