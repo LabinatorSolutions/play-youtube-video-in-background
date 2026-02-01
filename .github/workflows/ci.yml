@@ -39,7 +39,7 @@ jobs:
         run: bun run build
       
       - name: Upload extension artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: extension-package
           path: web-ext-artifacts/*.zip
