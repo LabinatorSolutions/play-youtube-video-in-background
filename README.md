@@ -1,13 +1,11 @@
 # Play YouTube Video In Background
 
-[![Firefox Add-on](https://img.shields.io/badge/Firefox_Add--on-Get_It_Now-blue.svg)](https://addons.mozilla.org/en-US/firefox/addon/play-youtube-video-in-background/)
+[![Firefox Add-on](https://img.shields.io/badge/Firefox_Add--on-Get_It_Now-blue.svg)](https://addons.mozilla.org/en-US/firefox/addon/play-yt-video-in-background/)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-1.0.0-green.svg)](manifest.json)
 
 
 A Firefox extension that prevents YouTube and Vimeo from stopping video playback when the browser is in the background, minimized, or when switching tabs.
-
-**Current Version:** v1.0.0
 
 ## Purpose
 
@@ -18,7 +16,6 @@ This extension ensures that videos on **YouTube** and **Vimeo** continue playing
 - **Background Playback**: Forces YouTube and Vimeo to continue playing even when the tab is not active.
 - **Page Visibility API Override**: Tricks the websites into thinking the page is always visible (`document.hidden` is always `false`).
 - **Mobile Support**: Includes logic for Android and iOS Firefox support with MediaSession API integration.
-- **Video Recovery**: Automatically resumes playback if unexpectedly paused due to browser suspension.
 - **Video Recovery**: Automatically resumes playback if unexpectedly paused due to browser suspension.
 - **Lightweight**: Minimal performance impact.
 
@@ -35,7 +32,7 @@ The extension uses a lightweight content script to override the [Page Visibility
 
 ### From Firefox Add-ons (Recommended)
 
-[Install from Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/play-youtube-video-in-background/)
+[Install from Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/play-yt-video-in-background/)
 
 ### From Source
 
@@ -79,19 +76,18 @@ The extension uses a lightweight content script to override the [Page Visibility
 
 **To Verify:**
 1.  Play a video.
-2.  Switch to another tab.
-3.  The icon in the tab bar should show the "playing audio" speaker symbol, and audio should continue uninterrupted.
+2.  Switch to another tab or minimize Firefox.
+3.  **Desktop**: The tab should show the "playing audio" speaker icon.
+4.  **Android**: You should see the Firefox media control notification in your notification shade, and audio will continue.
 
 > **Note**: This extension focuses purely on background playback. For preventing YouTube's "Are you still watching?" timeout prompts, consider pairing with the [YouTube Uninterrupted](https://github.com/LabinatorSolutions/youtube-uninterrupted) extension.
 
+## Known Limitations
 
-### Known Limitations
-
-- **Desktop YouTube**: Background playback works natively in most cases; extension primarily helps with mobile and Vimeo.
+- **Desktop YouTube**: Background playback works natively in most cases; extension primarily helps with mobile.
 - **Timeout Prompts**: This extension does NOT prevent YouTube's "Are you still watching?" prompts. Use [YouTube Uninterrupted](https://github.com/LabinatorSolutions/youtube-uninterrupted) for that.
 - **Firefox forks**: May not work on Firefox forks that don't support `wrappedJSObject`.
 - **Other extensions**: Ad blockers or privacy extensions might interfere.
-
 
 ## Development
 
