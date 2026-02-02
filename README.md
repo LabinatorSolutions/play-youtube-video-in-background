@@ -2,8 +2,6 @@
 
 [![Firefox Add-on](https://img.shields.io/badge/Firefox_Add--on-Get_It_Now-blue.svg)](https://addons.mozilla.org/en-US/firefox/addon/play-yt-video-in-background/)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.0.0-green.svg)](manifest.json)
-
 
 A Firefox extension that prevents YouTube and Vimeo from stopping video playback when the browser is in the background, minimized, or when switching tabs.
 
