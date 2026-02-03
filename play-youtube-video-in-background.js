@@ -68,6 +68,7 @@
 
     // Track user-initiated pauses to prevent auto-resume
     let lastUserPauseTime = 0;
+    let wasPlayingBeforePause = false;
 
     // Start video playback monitoring for auto-recovery
     if (IS_YOUTUBE || IS_VIMEO) {
@@ -131,20 +132,39 @@
     }
 
     /**
-     * Tracks user-initiated pause events to distinguish from system pauses.
+     * Tracks user-initiated pause and play events.
      */
     function trackUserPauses() {
-        // Use event delegation since video element may not exist yet
+        // Track pause events
         document.addEventListener('pause', (evt) => {
             // @ts-ignore: Type check for HTMLVideoElement
             const video = evt.target;
             if (video && video instanceof HTMLVideoElement) {
-                // Mark as user pause only if it's not already marked
-                // (to avoid double-marking from MediaSession handler)
+                // Mark as user pause - this disables auto-recovery permanently
                 const timeSinceLastPause = Date.now() - lastUserPauseTime;
                 if (timeSinceLastPause > 1000) { // More than 1 second
                     lastUserPauseTime = Date.now();
-                    console.log('Play YouTube Video in Background: User paused video');
+                    wasPlayingBeforePause = false; // Disable auto-recovery
+                    console.log('Play YouTube Video in Background: User paused - auto-recovery disabled');
+                }
+            }
+        }, true); // Capture phase
+
+        // Track play events to detect manual resume
+        document.addEventListener('play', (evt) => {
+            // @ts-ignore: Type check for HTMLVideoElement
+            const video = evt.target;
+            if (video && video instanceof HTMLVideoElement) {
+                // Check if this is a user resume after a pause
+                const timeSinceLastPause = Date.now() - lastUserPauseTime;
+                if (lastUserPauseTime > 0 && timeSinceLastPause < 5000) {
+                    // Recent resume after pause = user manually resumed
+                    lastUserPauseTime = 0;
+                    wasPlayingBeforePause = true;
+                    console.log('Play YouTube Video in Background: User resumed - auto-recovery enabled');
+                } else if (lastUserPauseTime === 0) {
+                    // Video started playing naturally (auto-recovery or initial play)
+                    wasPlayingBeforePause = true;
                 }
             }
         }, true); // Capture phase
@@ -169,22 +189,23 @@
                 return;
             }
 
-            // Check how long ago user paused (if at all)
-            const timeSinceUserPause = Date.now() - lastUserPauseTime;
-            const USER_PAUSE_COOLDOWN = 30000; // 30 seconds
-
-            // If user recently paused, reset the consecutive pause counter
-            // This prevents premature recovery after cooldown expires
-            if (timeSinceUserPause < USER_PAUSE_COOLDOWN && video.paused) {
+            // If user manually paused, NEVER auto-resume (permanent pause)
+            if (lastUserPauseTime > 0) {
                 consecutivePauses = 0;
-                return;
+                return; // User pause is permanent until user manually resumes
+            }
+
+            // Track if video is currently playing
+            if (!video.paused && !wasPlayingBeforePause) {
+                wasPlayingBeforePause = true;
             }
 
             // Check if video is unexpectedly paused
+            // Only auto-recover if video was actively playing before
             const isUnexpectedlyPaused = video.paused &&
                 !video.ended &&
                 video.readyState >= 2 && // HAVE_CURRENT_DATA
-                timeSinceUserPause > USER_PAUSE_COOLDOWN; // Not a recent user pause
+                wasPlayingBeforePause; // Must have been playing before pause
 
             if (isUnexpectedlyPaused) {
                 consecutivePauses++;
