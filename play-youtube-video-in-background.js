@@ -66,9 +66,13 @@
         initializeMediaSession();
     }
 
+    // Track user-initiated pauses to prevent auto-resume
+    let lastUserPauseTime = 0;
+
     // Start video playback monitoring for auto-recovery
     if (IS_YOUTUBE || IS_VIMEO) {
         monitorVideoPlayback();
+        trackUserPauses();
     }
 
     /**
@@ -92,11 +96,16 @@
                 ]
             });
 
-            // Prevent default pause behavior
+            // Handle pause requests from media controls
             // @ts-ignore: MediaSession API
             navigator.mediaSession.setActionHandler('pause', () => {
-                // Intentionally ignore pause requests from system
-                console.log('Play YouTube Video in Background: Ignoring system pause request');
+                console.log('Play YouTube Video in Background: User paused via media controls');
+                const video = document.querySelector('video');
+                if (video && !video.paused) {
+                    // Mark this as a user-initiated pause
+                    lastUserPauseTime = Date.now();
+                    video.pause();
+                }
             });
 
             // Handle play requests
@@ -122,11 +131,34 @@
     }
 
     /**
+     * Tracks user-initiated pause events to distinguish from system pauses.
+     */
+    function trackUserPauses() {
+        // Use event delegation since video element may not exist yet
+        document.addEventListener('pause', (evt) => {
+            // @ts-ignore: Type check for HTMLVideoElement
+            const video = evt.target;
+            if (video && video instanceof HTMLVideoElement) {
+                // Mark as user pause only if it's not already marked
+                // (to avoid double-marking from MediaSession handler)
+                const timeSinceLastPause = Date.now() - lastUserPauseTime;
+                if (timeSinceLastPause > 1000) { // More than 1 second
+                    lastUserPauseTime = Date.now();
+                    console.log('Play YouTube Video in Background: User paused video');
+                }
+            }
+        }, true); // Capture phase
+    }
+
+    /**
      * Monitors video playback and attempts to recover if unexpectedly paused.
      * Especially useful on mobile when system tries to suspend background tabs.
      */
     function monitorVideoPlayback() {
         let consecutivePauses = 0;
+        let lastRecoveryAttemptTime = 0;
+        const MAX_RECOVERY_ATTEMPTS = 3;
+        const RECOVERY_ATTEMPT_WINDOW = 60000; // 1 minute
 
         /**
          * Checks if video is playing and attempts recovery if needed
@@ -137,27 +169,62 @@
                 return;
             }
 
+            // Check how long ago user paused (if at all)
+            const timeSinceUserPause = Date.now() - lastUserPauseTime;
+            const USER_PAUSE_COOLDOWN = 30000; // 30 seconds
+
+            // If user recently paused, reset the consecutive pause counter
+            // This prevents premature recovery after cooldown expires
+            if (timeSinceUserPause < USER_PAUSE_COOLDOWN && video.paused) {
+                consecutivePauses = 0;
+                return;
+            }
+
             // Check if video is unexpectedly paused
             const isUnexpectedlyPaused = video.paused &&
                 !video.ended &&
                 video.readyState >= 2 && // HAVE_CURRENT_DATA
-                !document.hidden; // Our override makes this always false
+                timeSinceUserPause > USER_PAUSE_COOLDOWN; // Not a recent user pause
 
             if (isUnexpectedlyPaused) {
                 consecutivePauses++;
 
-                // Only attempt recovery if we've seen multiple consecutive pauses
-                // This prevents interfering with user-initiated pauses
-                if (consecutivePauses >= 2) {
-                    console.warn('Play YouTube Video in Background: Video unexpectedly paused, attempting recovery');
+                // Increased threshold to prevent interfering with user pauses
+                // 5 consecutive pauses = 15 seconds on mobile, 25 seconds on desktop
+                if (consecutivePauses >= 5) {
+                    // Check if we've exceeded max recovery attempts in the time window
+                    const timeSinceLastAttempt = Date.now() - lastRecoveryAttemptTime;
 
-                    video.play().catch(err => {
-                        console.error('Play YouTube Video in Background: Failed to resume playback', err);
-                    });
+                    if (timeSinceLastAttempt > RECOVERY_ATTEMPT_WINDOW) {
+                        // Reset attempt tracking after time window expires
+                        lastRecoveryAttemptTime = 0;
+                    }
+
+                    // Limit recovery attempts to prevent infinite loops
+                    const shouldAttemptRecovery =
+                        lastRecoveryAttemptTime === 0 ||
+                        consecutivePauses - 5 < MAX_RECOVERY_ATTEMPTS;
+
+                    if (shouldAttemptRecovery) {
+                        console.warn('Play YouTube Video in Background: Video unexpectedly paused, attempting recovery');
+                        lastRecoveryAttemptTime = Date.now();
+
+                        video.play().then(() => {
+                            // Recovery successful, reset counters
+                            consecutivePauses = 0;
+                            lastRecoveryAttemptTime = 0;
+                        }).catch(err => {
+                            console.error('Play YouTube Video in Background: Failed to resume playback', err);
+                        });
+                    } else {
+                        console.log('Play YouTube Video in Background: Max recovery attempts reached, giving up');
+                        consecutivePauses = 0; // Reset to stop further attempts
+                    }
                 }
             } else if (!video.paused) {
                 // Video is playing, reset counter
                 consecutivePauses = 0;
+                lastRecoveryAttemptTime = 0;
             }
         }
 
