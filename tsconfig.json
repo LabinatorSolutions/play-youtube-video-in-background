@@ -15,7 +15,6 @@
 		"strictNullChecks": false,
 		"moduleResolution": "bundler",
 		"types": [
-			"bun-types",
 			"firefox-webext-browser"
 		]
 	},

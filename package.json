@@ -19,16 +19,17 @@
 		"test": "bun run lint && bun run typecheck",
 		"prebuild": "bun run test",
 		"build": "web-ext build --overwrite-dest",
-		"validate": "web-ext lint"
+		"validate": "web-ext lint",
+		"preview": "echo 'No Preview'"
 	},
 	"devDependencies": {
-		"@eslint/js": "^10.0.0",
+		"@eslint/js": "^10.0.1",
 		"@types/firefox-webext-browser": "^143.0.0",
 		"bun-types": "latest",
-		"eslint": "^10.0.0",
-		"globals": "^17.3.0",
-		"typescript": "^5.9.3",
-		"web-ext": "^10.0.0"
+		"eslint": "^10.2.1",
+		"globals": "^17.5.0",
+		"typescript": "^6.0.3",
+		"web-ext": "^10.1.0"
 	},
 	"private": true
 }
