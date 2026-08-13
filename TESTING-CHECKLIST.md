@@ -143,23 +143,27 @@ s
 
 ## Console Testing (Debug Mode)
 
+Diagnostic logging is off by default. Set `DEBUG = true` at the top of
+`play-youtube-video-in-background.js` and reload the extension before running this section.
+
 - [ ] **Check Console Logs**
   - [ ] Open YouTube
   - [ ] Open browser console (F12)
-  - [ ] Look for extension initialization messages
-  - [ ] Verify MediaSession integration logs
-  - [ ] Check for video recovery monitoring logs
+  - [ ] Verify user pause detection logs when pausing manually
+  - [ ] Check for video recovery logs when playback is interrupted
 
 - [ ] **Monitor During Playback**
   - [ ] Watch console during background playback
-  - [ ] Should see periodic recovery checks
   - [ ] No error messages
   - [ ] No unexpected warnings
+
+- [ ] **Default Build Is Quiet**
+  - [ ] With `DEBUG = false`, no routine extension logs appear during normal playback
 
 ## Compatibility Tests
 
 - [ ] **Firefox Versions**
-  - [ ] Test on Firefox 147+ (minimum version)
+  - [ ] Test on Firefox 153+ (minimum version)
   - [ ] Test on latest Firefox release
   - [ ] (Optional) Test on Firefox Nightly
 
@@ -184,7 +188,8 @@ s
   - [ ] Play video on mobile
   - [ ] Check notification controls appear
   - [ ] Test play/pause from notification
-  - [ ] Verify metadata shows in notification
+  - [ ] Verify notification shows the site's own title and artwork (not extension branding)
+  - [ ] On Vimeo, notification must not show YouTube branding
 
 - [ ] **System Media Controls**
   - [ ] Test hardware media keys (if available)
@@ -199,9 +204,16 @@ s
   - [ ] Extension should auto-resume if paused unexpectedly
 
 - [ ] **User Pause Respect**
-  - [ ] Manually pause video
+  - [ ] Manually pause video (click, keyboard, or media keys)
+  - [ ] Wait at least 30 seconds
   - [ ] Extension should NOT auto-resume user pauses
+  - [ ] Pause from the OS media notification is also respected
   - [ ] Only auto-resume unexpected pauses
+
+- [ ] **Multiple Video Elements**
+  - [ ] Open the YouTube home feed (hover previews create extra video elements)
+  - [ ] Open a Shorts page
+  - [ ] Recovery targets the playing/main video, not a preview
 
 ## Privacy & Security Tests
 

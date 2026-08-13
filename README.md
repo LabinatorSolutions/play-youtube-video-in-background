@@ -14,7 +14,7 @@ This extension ensures that videos on **YouTube** and **Vimeo** continue playing
 - **Background Playback**: Forces YouTube and Vimeo to continue playing even when the tab is not active.
 - **Page Visibility API Override**: Tricks the websites into thinking the page is always visible (`document.hidden` is always `false`).
 - **Mobile Support**: Includes logic for Android and iOS Firefox support with MediaSession API integration.
-- **Video Recovery**: Automatically resumes playback if unexpectedly paused due to browser suspension.
+- **Video Recovery**: Automatically resumes playback if unexpectedly paused due to browser suspension, while leaving pauses you asked for alone.
 - **Lightweight**: Minimal performance impact.
 
 ## How It Works
@@ -63,7 +63,7 @@ The extension uses a lightweight content script to override the [Page Visibility
 2. **Verify you're on a supported site**: The extension only works on YouTube and Vimeo.
 3. **Try reloading the page**: Sometimes a page refresh is needed after installing.
 4. **Check browser console**: Press `F12` and look for any error messages from the extension.
-5. **Firefox version**: Ensure you're running Firefox 147.0 or later.
+5. **Firefox version**: Ensure you're running Firefox 153.0 or later.
 
 ## Usage
 

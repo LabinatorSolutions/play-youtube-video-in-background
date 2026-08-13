@@ -1,6 +1,19 @@
 'use strict';
 
 (function () {
+    // Set to true to trace extension decisions in the page console.
+    const DEBUG = false;
+
+    /**
+     * Logs a diagnostic message when DEBUG is enabled.
+     * @param {string} message
+     */
+    function debugLog(message) {
+        if (DEBUG) {
+            console.log(`Play YouTube Video in Background: ${message}`);
+        }
+    }
+
     // Check if we are in a Firefox environment with access to wrappedJSObject
     // This is required to override the Page Visibility API seen by the page's scripts.
     // @ts-ignore: Firefox-specific Xray vision property
@@ -66,9 +79,11 @@
         initializeMediaSession();
     }
 
-    // Track user-initiated pauses to prevent auto-resume
-    let lastUserPauseTime = 0;
-    let wasPlayingBeforePause = false;
+    // Auto-recovery state.
+    // userPaused stays true from a user-initiated pause until playback resumes,
+    // so the recovery loop never fights a deliberate pause.
+    let userPaused = false;
+    let wasPlaying = false;
 
     // Start video playback monitoring for auto-recovery
     if (IS_YOUTUBE || IS_VIMEO) {
@@ -77,8 +92,65 @@
     }
 
     /**
+     * Returns the video element the page is most likely playing.
+     * Pages such as the YouTube home feed and Shorts hold several video elements,
+     * so the first match in the DOM is often a muted preview rather than the player.
+     * @returns {HTMLVideoElement|null}
+     */
+    function findVideo() {
+        const videos = Array.from(document.querySelectorAll('video'));
+        if (videos.length <= 1) {
+            return videos[0] || null;
+        }
+
+        const playing = videos.find(v => !v.paused && !v.ended && v.readyState >= 2);
+        if (playing) {
+            return playing;
+        }
+
+        // Fall back to the largest loaded video, which is the main player in practice.
+        const loaded = videos.filter(v => v.readyState >= 2);
+        const candidates = loaded.length > 0 ? loaded : videos;
+        return candidates.reduce((best, v) => (visibleArea(v) > visibleArea(best) ? v : best));
+    }
+
+    /**
+     * Rendered area of a video element in CSS pixels.
+     * @param {HTMLVideoElement} video
+     * @returns {number}
+     */
+    function visibleArea(video) {
+        return video.clientWidth * video.clientHeight;
+    }
+
+    /**
+     * Reports whether the pause that is being handled came from the user.
+     * Firefox exposes transient activation through navigator.userActivation (Firefox 120+),
+     * which is true only for a few seconds after a real interaction. A pause caused by
+     * tab suspension or the page's own scripts carries no activation, so it stays eligible
+     * for auto-recovery.
+     * @returns {boolean}
+     */
+    function isUserInitiated() {
+        const activation = navigator.userActivation;
+        return activation ? activation.isActive : false;
+    }
+
+    /**
+     * Records a pause the user asked for, disabling auto-recovery until playback resumes.
+     */
+    function markUserPause() {
+        userPaused = true;
+        wasPlaying = false;
+        debugLog('User pause detected - auto-recovery disabled');
+    }
+
+    /**
      * Initializes the MediaSession API to integrate with the system's media controls.
      * This helps maintain playback on mobile devices by registering as a media player.
+     * Metadata is deliberately left to the site: YouTube and Vimeo publish their own
+     * title, artist and artwork, and overwriting it would show the wrong media in the
+     * system notification.
      */
     function initializeMediaSession() {
         if (!('mediaSession' in navigator)) {
@@ -86,25 +158,15 @@
         }
 
         try {
-            // Set metadata for media notification
-            // @ts-ignore: MediaSession API
-            navigator.mediaSession.metadata = new MediaMetadata({
-                title: 'YouTube Background Playback',
-                artist: 'Playing in background',
-                album: 'Firefox Extension',
-                artwork: [
-                    { src: 'https://www.youtube.com/favicon.ico', sizes: '96x96', type: 'image/x-icon' }
-                ]
-            });
-
-            // Handle pause requests from media controls
+            // Handle pause requests from media controls.
+            // System media controls grant no transient activation, so the pause is
+            // recorded here instead of being inferred from the 'pause' event.
             // @ts-ignore: MediaSession API
             navigator.mediaSession.setActionHandler('pause', () => {
-                console.log('Play YouTube Video in Background: User paused via media controls');
-                const video = document.querySelector('video');
+                debugLog('User paused via media controls');
+                const video = findVideo();
                 if (video && !video.paused) {
-                    // Mark this as a user-initiated pause
-                    lastUserPauseTime = Date.now();
+                    markUserPause();
                     video.pause();
                 }
             });
@@ -112,7 +174,7 @@
             // Handle play requests
             // @ts-ignore: MediaSession API
             navigator.mediaSession.setActionHandler('play', () => {
-                const video = document.querySelector('video');
+                const video = findVideo();
                 if (video && video.paused) {
                     video.play().catch(err => {
                         console.error('Play YouTube Video in Background: Failed to play video', err);
@@ -123,7 +185,7 @@
             // Handle stop requests (also ignore)
             // @ts-ignore: MediaSession API
             navigator.mediaSession.setActionHandler('stop', () => {
-                console.log('Play YouTube Video in Background: Ignoring system stop request');
+                debugLog('Ignoring system stop request');
             });
 
         } catch (e) {
@@ -139,33 +201,22 @@
         document.addEventListener('pause', (evt) => {
             // @ts-ignore: Type check for HTMLVideoElement
             const video = evt.target;
-            if (video && video instanceof HTMLVideoElement) {
-                // Mark as user pause - this disables auto-recovery permanently
-                const timeSinceLastPause = Date.now() - lastUserPauseTime;
-                if (timeSinceLastPause > 1000) { // More than 1 second
-                    lastUserPauseTime = Date.now();
-                    wasPlayingBeforePause = false; // Disable auto-recovery
-                    console.log('Play YouTube Video in Background: User paused - auto-recovery disabled');
-                }
+            if (video instanceof HTMLVideoElement && isUserInitiated()) {
+                markUserPause();
             }
         }, true); // Capture phase
 
-        // Track play events to detect manual resume
+        // Track play events. Any resume clears the user pause, whether it came from the
+        // user, the site or our own recovery attempt.
         document.addEventListener('play', (evt) => {
             // @ts-ignore: Type check for HTMLVideoElement
             const video = evt.target;
-            if (video && video instanceof HTMLVideoElement) {
-                // Check if this is a user resume after a pause
-                const timeSinceLastPause = Date.now() - lastUserPauseTime;
-                if (lastUserPauseTime > 0 && timeSinceLastPause < 5000) {
-                    // Recent resume after pause = user manually resumed
-                    lastUserPauseTime = 0;
-                    wasPlayingBeforePause = true;
-                    console.log('Play YouTube Video in Background: User resumed - auto-recovery enabled');
-                } else if (lastUserPauseTime === 0) {
-                    // Video started playing naturally (auto-recovery or initial play)
-                    wasPlayingBeforePause = true;
+            if (video instanceof HTMLVideoElement) {
+                if (userPaused) {
+                    debugLog('Playback resumed - auto-recovery enabled');
                 }
+                userPaused = false;
+                wasPlaying = true;
             }
         }, true); // Capture phase
     }
@@ -176,77 +227,76 @@
      */
     function monitorVideoPlayback() {
         let consecutivePauses = 0;
-        let lastRecoveryAttemptTime = 0;
+        let recoveryAttempts = 0;
+        let attemptWindowStart = 0;
         const MAX_RECOVERY_ATTEMPTS = 3;
         const RECOVERY_ATTEMPT_WINDOW = 60000; // 1 minute
+        const PAUSES_BEFORE_RECOVERY = 5; // 15 seconds on mobile, 25 seconds on desktop
 
         /**
          * Checks if video is playing and attempts recovery if needed
          */
         function checkPlayback() {
-            const video = document.querySelector('video');
+            const video = findVideo();
             if (!video) {
                 return;
             }
 
-            // If user manually paused, NEVER auto-resume (permanent pause)
-            if (lastUserPauseTime > 0) {
+            // A user pause stays in effect until playback resumes.
+            if (userPaused) {
                 consecutivePauses = 0;
-                return; // User pause is permanent until user manually resumes
+                return;
             }
 
-            // Track if video is currently playing
-            if (!video.paused && !wasPlayingBeforePause) {
-                wasPlayingBeforePause = true;
+            if (!video.paused) {
+                // Video is playing, reset counters
+                wasPlaying = true;
+                consecutivePauses = 0;
+                recoveryAttempts = 0;
+                attemptWindowStart = 0;
+                return;
             }
 
             // Check if video is unexpectedly paused
             // Only auto-recover if video was actively playing before
-            const isUnexpectedlyPaused = video.paused &&
-                !video.ended &&
+            const isUnexpectedlyPaused = !video.ended &&
                 video.readyState >= 2 && // HAVE_CURRENT_DATA
-                wasPlayingBeforePause; // Must have been playing before pause
+                wasPlaying; // Must have been playing before pause
 
-            if (isUnexpectedlyPaused) {
-                consecutivePauses++;
-
-                // Increased threshold to prevent interfering with user pauses
-                // 5 consecutive pauses = 15 seconds on mobile, 25 seconds on desktop
-                if (consecutivePauses >= 5) {
-                    // Check if we've exceeded max recovery attempts in the time window
-                    const timeSinceLastAttempt = Date.now() - lastRecoveryAttemptTime;
-
-                    if (timeSinceLastAttempt > RECOVERY_ATTEMPT_WINDOW) {
-                        // Reset attempt tracking after time window expires
-                        lastRecoveryAttemptTime = 0;
-                    }
-
-                    // Limit recovery attempts to prevent infinite loops
-                    const shouldAttemptRecovery =
-                        lastRecoveryAttemptTime === 0 ||
-                        consecutivePauses - 5 < MAX_RECOVERY_ATTEMPTS;
-
-                    if (shouldAttemptRecovery) {
-                        console.warn('Play YouTube Video in Background: Video unexpectedly paused, attempting recovery');
-                        lastRecoveryAttemptTime = Date.now();
-
-                        video.play().then(() => {
-                            // Recovery successful, reset counters
-                            consecutivePauses = 0;
-                            lastRecoveryAttemptTime = 0;
-                        }).catch(err => {
-                            console.error('Play YouTube Video in Background: Failed to resume playback', err);
-                        });
-                    } else {
-                        console.log('Play YouTube Video in Background: Max recovery attempts reached, giving up');
-                        consecutivePauses = 0; // Reset to stop further attempts
-                    }
-                }
-            } else if (!video.paused) {
-                // Video is playing, reset counter
-                consecutivePauses = 0;
-                lastRecoveryAttemptTime = 0;
+            if (!isUnexpectedlyPaused) {
+                return;
             }
+
+            consecutivePauses++;
+            if (consecutivePauses < PAUSES_BEFORE_RECOVERY) {
+                return;
+            }
+
+            const now = Date.now();
+            if (attemptWindowStart === 0 || now - attemptWindowStart > RECOVERY_ATTEMPT_WINDOW) {
+                // Start a fresh attempt window
+                attemptWindowStart = now;
+                recoveryAttempts = 0;
+            }
+
+            // Limit recovery attempts to prevent infinite loops
+            if (recoveryAttempts >= MAX_RECOVERY_ATTEMPTS) {
+                debugLog('Max recovery attempts reached, giving up');
+                consecutivePauses = 0; // Reset to stop further attempts
+                return;
+            }
+
+            recoveryAttempts++;
+            debugLog('Video unexpectedly paused, attempting recovery');
+
+            video.play().then(() => {
+                // Recovery successful, reset counters
+                consecutivePauses = 0;
+                recoveryAttempts = 0;
+                attemptWindowStart = 0;
+            }).catch(err => {
+                console.error('Play YouTube Video in Background: Failed to resume playback', err);
+            });
         }
 
         // Check every 5 seconds on desktop, 3 seconds on mobile for more responsive recovery
