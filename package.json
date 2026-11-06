@@ -1,6 +1,6 @@
 {
 	"name": "Play YouTube Video In Background",
-	"version": "1.1.0",
+	"version": "1.1.1",
 	"author": "Labinator",
 	"type": "module",
 	"description": "Prevents YouTube & Vimeo from stopping Firefox from playing videos in the background.",
@@ -24,12 +24,12 @@
 	},
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",
-		"@types/firefox-webext-browser": "^143.0.0",
+		"@types/firefox-webext-browser": "^143.0.1",
 		"bun-types": "latest",
-		"eslint": "^10.8.1",
-		"globals": "^17.11.0",
+		"eslint": "^10.14.0",
+		"globals": "^17.14.0",
 		"typescript": "^7.0.2",
-		"web-ext": "^10.6.0"
+		"web-ext": "^10.8.0"
 	},
 	"private": true
 }

@@ -63,7 +63,7 @@ The extension uses a lightweight content script to override the [Page Visibility
 2. **Verify you're on a supported site**: The extension only works on YouTube and Vimeo.
 3. **Try reloading the page**: Sometimes a page refresh is needed after installing.
 4. **Check browser console**: Press `F12` and look for any error messages from the extension.
-5. **Firefox version**: Ensure you're running Firefox 153.0 or later.
+5. **Firefox version**: Ensure you're running Firefox 159.0 or later.
 
 ## Usage
 

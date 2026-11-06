@@ -163,7 +163,7 @@ Diagnostic logging is off by default. Set `DEBUG = true` at the top of
 ## Compatibility Tests
 
 - [ ] **Firefox Versions**
-  - [ ] Test on Firefox 153+ (minimum version)
+  - [ ] Test on Firefox 159+ (minimum version)
   - [ ] Test on latest Firefox release
   - [ ] (Optional) Test on Firefox Nightly
 
