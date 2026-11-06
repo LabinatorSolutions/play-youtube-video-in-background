@@ -4,6 +4,13 @@ All notable changes to Play YouTube Video in Background are documented here.
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- The package is smaller: development files (lock file, configs, Markdown docs) are no longer included in the AMO
+  upload. The 1.1.1 build on AMO was uploaded before this change and still contains them; they are never loaded.
+
 ## [1.1.1] - 2026-11-06
 
 ### Changed
@@ -14,8 +21,6 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - New toolbar icon in the Labinator icon system: a white play triangle on a front window, with a second window
   behind it, on an ultramarine square. It replaces the gradient icon.
 - Development dependencies updated (ESLint, web-ext, globals, type definitions). None of them ship in the add-on.
-- The package is smaller: development files (lock file, configs, Markdown docs) are no longer included in the
-  AMO upload.
 
 ### Unchanged
 
